@@ -20,9 +20,24 @@ menuOption = 0
 def showScreen(num,colour,userName = None):
     global menuOption
     
+    def takeStart(event):
+        global start,start1
+        start = event.x
+        start1 = event.y
+        
+    def moveable(event):
+        x = consumerFrame.winfo_x()+(event.x-start)
+        y = consumerFrame.winfo_y()+(event.y - start1)
+        consumerFrame.place(x=x,y=y)
+    
     def showDetails(pos):
-        frame = CTkFrame(main,width = 210,height=210,fg_color='white')
-        frame.place(x=255,y=255)
+        global consumerFrame
+        consumerFrame = CTkFrame(main,width = 210,height=210,fg_color='black' if colour == 'white' else 'white')
+        consumerFrame.place(x=10,y=10)
+        CTkLabel(consumerFrame,text='Please note that this price is not stable . \n Make a request and wait for the response').place(x=10,y=10)
+        CTkEntry(consumerFrame,text_color=colour,placeholder_text='Quantity',state=DISABLED).place(x=10,y=60)
+        consumerFrame.bind('<ButtonPress-1>',takeStart)
+        consumerFrame.bind("<B1-Motion>",moveable)
         #myCursor.execute()
         
     # price update by the farmers
@@ -249,7 +264,7 @@ main.title('Farmers Friends')
 #print(getpass.getuser())
 main.resizable(False,False)
 set_appearance_mode('Dark')
-showScreen(1,'white')
+showScreen(3,'white')
 main.mainloop()
 
 #nikish
