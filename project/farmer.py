@@ -20,36 +20,57 @@ menuOption = 0
 def showScreen(num,colour,userName = None):
     global menuOption
     
+    # take initial message box position
     def takeStart(event):
         global start,start1
         start = event.x
         start1 = event.y
-        
+      
+    # make message box movable  
     def moveable(event):
         x = consumerFrame.winfo_x()+(event.x-start)
         y = consumerFrame.winfo_y()+(event.y - start1)
         consumerFrame.place(x=x,y=y)
     
+    # shows details of the farmer and allows to ask/set kg of items 
     def showDetails(pos):
+        
+        # setting quantity add
+        def addQuantity(value):
+            quantity.set(eval(f'{value}+1'))
+        
+        # setting quantity reduce
+        def reduceQuantity(value):
+            quantity.set(value-1) if value != 1 else quantity.set(value)
+            
         global consumerFrame
-        consumerFrame = CTkFrame(main,width = 210,height=210,fg_color='black' if colour == 'white' else 'white')
+        quantity = StringVar(value=1)
+        consumerFrame = CTkFrame(main,width = 350,height=210,fg_color='grey23' if colour == 'white' else 'gainsboro')
         consumerFrame.place(x=10,y=10)
-        CTkLabel(consumerFrame,text='Please note that this price is not stable . \n Make a request and wait for the response').place(x=10,y=10)
-        CTkEntry(consumerFrame,text_color=colour,placeholder_text='Quantity',state=DISABLED).place(x=10,y=60)
+        topFrame = CTkFrame(consumerFrame,width=350,height=30,fg_color='grey7' if colour == 'white' else 'white',bg_color='grey7' if colour == 'white' else 'gainsboro')
+        topFrame.place(x=0,y=0)
+        myCursor.execute(f'select price,farmer from items where location = "{str(pos[0])+","+str(pos[1])}"')
+        price,framerName = myCursor.fetchone()
+        CTkLabel(consumerFrame,text=f'Name : {framerName}\nPrice : {price}\nLocation : {pos}',text_color=colour).place(x=0,y=50)
+        CTkButton(topFrame,width=10,height=30,text='',fg_color='grey7',bg_color='grey7',image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\close-red-icon.webp'),size=(25,25)),command=consumerFrame.destroy).place(x=310,y=0)
+        CTkLabel(consumerFrame,text='Please note that this price is not stable. Make a request and wait for the response.\nThe prices may change/got updated by the farmer.',text_color=colour,font=('Times New Roman', 10, 'bold')).place(x=0,y=120)
+        CTkEntry(consumerFrame,text_color=colour,state=DISABLED,textvariable=quantity,width=40).place(x=10,y=70)
+        CTkButton(consumerFrame,text='Confirm',width=50).place(x=160,y=160)
+        CTkButton(consumerFrame,text='+',width=15,height=10,fg_color='black',command=lambda :addQuantity(quantity.get())).place(x=160,y=125)
+        CTkButton(consumerFrame,text='-',width=18,height=10,fg_color='black',command=lambda :reduceQuantity(int(quantity.get()))).place(x=100,y=125)
         consumerFrame.bind('<ButtonPress-1>',takeStart)
         consumerFrame.bind("<B1-Motion>",moveable)
-        #myCursor.execute()
-        
+             
     # price update by the farmers
     def priceUpdate(pos):
         myCursor = mydataBase.cursor()
         myCursor.execute(f'Select item from items where location = "{str(pos[0])+","+str(pos[1])}"')
         item = myCursor.fetchone()[0]
-        myCursor.close()
         price = CTkInputDialog(title='Price Update',text=f'Add/Update the price of your {item} you sell')
         try:
             myCursor.execute(f'update items set price = "{price.get_input()}" where location = "{str(pos[0])+","+str(pos[1])}"')
             mydataBase.commit()
+            myCursor.close()
         except:
             None
              
@@ -192,16 +213,18 @@ def showScreen(num,colour,userName = None):
      
     # first screen   
     if num == 1:
+        user = StringVar(value='nikis')
+        pass354 = StringVar(value='daniel354')
         topFrame = CTkFrame(main,width = 520,height=30,fg_color='white' if colour=='black' else 'black')
         topFrame.place(x=0,y=0)
         menuImage = CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\menu1-modified.png'))
         CTkButton(topFrame,text='menu',text_color=colour,height=26,width = 50,fg_color='white' if colour=='black' else 'black',image=menuImage,command=menu).place(x=442,y=0)
         CTkLabel(main,text='Vanakkam Nanba',text_color= 'red',font = ('Times New Roman',25),anchor='center').place(x=190,y=80)       
         CTkLabel(main,text='UserName',text_color=colour).place(x=170,y= 150)
-        userName = CTkEntry(main,placeholder_text='Your UserName')
+        userName = CTkEntry(main,placeholder_text='Your UserName',textvariable=user)
         userName.place(x=240,y=150)
         CTkLabel(main,text='Password',text_color=colour).place(x=170,y=190)
-        password = CTkEntry(main,placeholder_text='Your Password',show = '*',width=130)
+        password = CTkEntry(main,placeholder_text='Your Password',textvariable=pass354,show = '*',width=130)
         password.place(x=240,y=190)
         CTkButton(main,text='Login',fg_color='red',width=70,image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\redkey-modified.png')),command=check).place(x=190,y = 240) 
         CTkButton(main,text='Register',width=50,image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\register.png')),command=lambda:showScreen(2,colour)).place(x=280,y=240)
@@ -264,7 +287,7 @@ main.title('Farmers Friends')
 #print(getpass.getuser())
 main.resizable(False,False)
 set_appearance_mode('Dark')
-showScreen(3,'white')
+showScreen(1,'white')
 main.mainloop()
 
 #nikish
