@@ -20,60 +20,104 @@ menuOption = 0
 def showScreen(num,colour,userName = None):
     global menuOption
     
+    def fetch():
+        myCursor = mydataBase.cursor()
+        myCursor.execute(f'select role from logins where name = "{userName}"')
+        userRole = myCursor.fetchone()[0]
+        myCursor.close() 
+        return userRole
+        
+    # taking details
+    def takeFarmerDetails(column,pos):
+        myCursor = mydataBase.cursor()
+        myCursor.execute(f'Select {column},farmer from items where location = "{str(pos[0])+","+str(pos[1])}"')
+        item , name = myCursor.fetchone()
+        myCursor.close()
+        return (item,name)
+        
     # take initial message box position
     def takeStart(event):
         global start,start1
         start = event.x
         start1 = event.y
-      
-    # make message box movable  
-    def moveable(event):
-        x = consumerFrame.winfo_x()+(event.x-start)
-        y = consumerFrame.winfo_y()+(event.y - start1)
-        consumerFrame.place(x=x,y=y)
     
     # shows details of the farmer and allows to ask/set kg of items 
     def showDetails(pos):
         
+        # make message box movable  
+        def moveable(event):
+            if start is not None:
+                x = consumerFrame.winfo_x()+(event.x-start)
+                y = consumerFrame.winfo_y()+(event.y - start1)
+                consumerFrame.place(x=x,y=y)
+        
         # setting quantity add
-        def addQuantity(value):
+        def addQuantity(value,price):
+            priceLabel.set(eval(f'{price}*({value}+1)'))
             quantity.set(eval(f'{value}+1'))
         
         # setting quantity reduce
-        def reduceQuantity(value):
-            quantity.set(value-1) if value != 1 else quantity.set(value)
+        def reduceQuantity(value,price):
+            if value > 1:
+                priceLabel.set((value-1)*price)
+                quantity.set(value-1) 
+            else:
+                priceLabel.set(price)
+                quantity.set(value)
             
-        global consumerFrame
         quantity = StringVar(value=1)
         consumerFrame = CTkFrame(main,width = 350,height=210,fg_color='grey23' if colour == 'white' else 'gainsboro')
         consumerFrame.place(x=10,y=10)
         topFrame = CTkFrame(consumerFrame,width=350,height=30,fg_color='grey7' if colour == 'white' else 'white',bg_color='grey7' if colour == 'white' else 'gainsboro')
         topFrame.place(x=0,y=0)
-        myCursor.execute(f'select price,farmer from items where location = "{str(pos[0])+","+str(pos[1])}"')
-        price,framerName = myCursor.fetchone()
+        price,framerName = takeFarmerDetails('price',pos)
+        priceLabel = StringVar(value=price)
         CTkLabel(consumerFrame,text=f'Name : {framerName}\nPrice : {price}\nLocation : {pos}',text_color=colour).place(x=0,y=50)
         CTkButton(topFrame,width=10,height=30,text='',fg_color='grey7',bg_color='grey7',image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\close-red-icon.webp'),size=(25,25)),command=consumerFrame.destroy).place(x=310,y=0)
         CTkLabel(consumerFrame,text='Please note that this price is not stable. Make a request and wait for the response.\nThe prices may change/got updated by the farmer.',text_color=colour,font=('Times New Roman', 10, 'bold')).place(x=0,y=120)
         CTkEntry(consumerFrame,text_color=colour,state=DISABLED,textvariable=quantity,width=40).place(x=10,y=70)
+        CTkEntry(consumerFrame,text_color=colour,state=DISABLED,textvariable=priceLabel,width=60).place(x=100,y=70)
         CTkButton(consumerFrame,text='Confirm',width=50).place(x=160,y=160)
-        CTkButton(consumerFrame,text='+',width=15,height=10,fg_color='black',command=lambda :addQuantity(quantity.get())).place(x=160,y=125)
-        CTkButton(consumerFrame,text='-',width=18,height=10,fg_color='black',command=lambda :reduceQuantity(int(quantity.get()))).place(x=100,y=125)
+        CTkButton(consumerFrame,text='+',width=15,height=10,fg_color='black',command=lambda :addQuantity(quantity.get(),price)).place(x=160,y=125)
+        CTkButton(consumerFrame,text='-',width=18,height=10,fg_color='black',command=lambda :reduceQuantity(int(quantity.get()),price)).place(x=100,y=125)
         consumerFrame.bind('<ButtonPress-1>',takeStart)
         consumerFrame.bind("<B1-Motion>",moveable)
              
     # price update by the farmers
-    def priceUpdate(pos):
-        myCursor = mydataBase.cursor()
-        myCursor.execute(f'Select item from items where location = "{str(pos[0])+","+str(pos[1])}"')
-        item = myCursor.fetchone()[0]
-        price = CTkInputDialog(title='Price Update',text=f'Add/Update the price of your {item} you sell')
-        try:
-            myCursor.execute(f'update items set price = "{price.get_input()}" where location = "{str(pos[0])+","+str(pos[1])}"')
+    def pricePopUp(pos):
+        
+        # make message box movable  
+        def moveable1(event):
+            x = popUpFrame.winfo_x()+(event.x-start)
+            y = popUpFrame.winfo_y()+(event.y - start1)
+            popUpFrame.place(x=x,y=y)
+            
+        def priceUpdate():
+            myCursor = mydataBase.cursor()
+            myCursor.execute(f'update items set price = "{updatedPrice.get()}" where location = "{str(pos[0])+","+str(pos[1])}"')
             mydataBase.commit()
             myCursor.close()
-        except:
-            None
-             
+            popUpFrame.destroy()
+            CTkMessagebox(main,icon='check',title='Successfully Updated',message="Your item's price is successfully updated")
+                    
+        item, name = takeFarmerDetails('item',pos)
+        myCursor = mydataBase.cursor()
+        myCursor.execute(f"select price from items where location = '{str(pos[0])+','+str(pos[1])}'")
+        priceVal = myCursor.fetchone()[0]
+        myCursor.close()
+        price = StringVar(value=priceVal)
+        popUpFrame = CTkFrame(main,width = 350,height=190,fg_color='grey23' if colour == 'white' else 'gainsboro')
+        popUpFrame.place(x=10,y=10)
+        topFrame = CTkFrame(popUpFrame,width=350,height=30,fg_color='grey7' if colour == 'white' else 'white',bg_color='grey7' if colour == 'white' else 'gainsboro')
+        topFrame.place(x=0,y=0)
+        CTkLabel(popUpFrame,text=f'Welcome back {name}\nAdd/Update the price of your {item} you sell').place(x=0,y=50)
+        updatedPrice = CTkEntry(popUpFrame,text_color=colour,textvariable=price)
+        updatedPrice.place(x=80,y=85)
+        CTkButton(popUpFrame,text='ok',text_color=colour,command=priceUpdate).place(x=70,y=125)
+        CTkButton(popUpFrame,text='cancel',text_color=colour,command=popUpFrame.destroy).place(x=175,y=125)
+        popUpFrame.bind('<ButtonPress-1>',takeStart)
+        popUpFrame.bind("<B1-Motion>",moveable1)
+        
     # right click menu
     def addPlace(coor):
         myCursor = mydataBase.cursor()
@@ -161,15 +205,11 @@ def showScreen(num,colour,userName = None):
     
     # search by location and mapping based on the location list
     def marker(status,locationsList = None):
-        myCursor = mydataBase.cursor()
-        myCursor.execute(f'select role from logins where name = "{userName}"')
-        userRole = myCursor.fetchone()[0]
-        myCursor.close() 
         if locationsList:
             for i in locationsList:
                 i = str(i).replace('(','').replace(')','').replace("'",'')
                 loc = i.split(',')
-                map.set_marker(float(loc[0]),float(loc[1]),text=items.get(),text_color = 'black',marker_color_circle = 'white',command=lambda x : priceUpdate(x.position) if userRole == 'farmer' else showDetails(x.position))
+                map.set_marker(float(loc[0]),float(loc[1]),text=items.get(),text_color = 'black',marker_color_circle = 'white',command=lambda x : pricePopUp(x.position) if fetch() == 'farmer' else showDetails(x.position))
         else:
             map.set_address(location.get(),marker=status)
     
@@ -193,6 +233,17 @@ def showScreen(num,colour,userName = None):
     # setting the role entry        
     def setRoleEntry():
         roleEntry.insert(0,role)
+        
+    def showHover(event):
+        global noticeLable
+        noticeLable = CTkLabel(main,text='Notice: Kindly get your location from your Gmaps and Enter your location .\n If your location is not entered correct not to worry much , you can change your location on menu',text_color=colour,fg_color='black'if colour == 'white' else 'white',font=('Times New Roman', 10))
+        noticeLable.place(x=180,y=(270-event.y))
+        
+    def hideHover(event):
+        noticeLable.destroy()
+        
+    def changeLocation():
+        CTkInputDialog(title='Change Your Location',text='Your past Location is ')
     
     # menu function        
     def menu():
@@ -202,6 +253,7 @@ def showScreen(num,colour,userName = None):
             menuFrame.place(x=390,y=30)
             CTkLabel(menuFrame,text='Theme',text_color=colour,font=('Times New Roman',15)).place(x=2,y=2)
             CTkOptionMenu(menuFrame,values=['Light','Dark'],command=theme,width=30).place(x=50,y=2)
+            CTkButton(menuFrame,text='Change Location',width=80,command=changeLocation).place(x=7,y=40)
             menuOption = 1
         else:
             menuOption = 0
@@ -237,22 +289,27 @@ def showScreen(num,colour,userName = None):
         col1 = 'gray8' if colour == 'white' else 'gainsboro'
         topFrame = CTkFrame(main,width=520,height=30,fg_color=col1,bg_color=col1)
         topFrame.place(x=0,y=0)
-        CTkLabel(main,text='Registration form',text_color= colour,font = ('Times New Roman',25),anchor='center').place(x=190,y=80)
-        CTkLabel(main,text='UserName',text_color='red').place(x=170,y=150)
+        CTkLabel(main,text='Registration form',text_color= colour,font = ('Times New Roman',25),anchor='center').place(x=190,y=60)
+        CTkLabel(main,text='UserName',text_color='red').place(x=170,y=110)
         userName1 = CTkEntry(main,placeholder_text='Your UserName')
-        userName1.place(x=240,y=150)
-        CTkLabel(main,text='Password',text_color='red').place(x=170,y=190)
+        userName1.place(x=240,y=110)
+        CTkLabel(main,text='Password',text_color='red').place(x=170,y=150)
         password1 = CTkEntry(main,placeholder_text='Your Password',show = '*')
-        password1.place(x=240,y=190)
-        CTkLabel(main,text='Email Id',text_color='red').place(x=170,y=230)
+        password1.place(x=240,y=150)
+        CTkLabel(main,text='Email Id',text_color='red').place(x=170,y=190)
         email = CTkEntry(main,placeholder_text='Your Email')
-        email.place(x=240,y=230)
-        CTkLabel(main,text='Role',text_color='red').place(x=170,y=270)
+        email.place(x=240,y=190)
+        CTkLabel(main,text='Role',text_color='red').place(x=170,y=230)
         roleEntry = CTkEntry(main,textvariable=role,state=DISABLED)
-        roleEntry.place(x=240,y=270)
-        CTkRadioButton(main,text='Farmer',variable=role,value='farmer',command = setRoleEntry).place(x=200,y=310)
-        CTkRadioButton(main,text='Consumer',variable=role,value='consumer',command = setRoleEntry).place(x=285,y=310)
-        CTkButton(main,text='Submit',image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\save1.jpg')),command=register,width=50).place(x= 200,y = 350)
+        roleEntry.place(x=240,y=230)
+        CTkLabel(main,text='Location',text_color='red').place(x=170,y=270)
+        locationEntry = CTkEntry(main,placeholder_text='Your location')
+        locationEntry.place(x=240,y=270)
+        locationEntry.bind('<Enter>',showHover)
+        locationEntry.bind('<Leave>',hideHover)
+        CTkRadioButton(main,text='Farmer',variable=role,value='farmer',command = setRoleEntry).place(x=200,y=320)
+        CTkRadioButton(main,text='Consumer',variable=role,value='consumer',command = setRoleEntry).place(x=285,y=320)
+        CTkButton(main,text='Submit',image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\save1.jpg')),command=register,width=50).place(x= 200,y = 400)
         CTkButton(topFrame,text='',image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\back-modified.png')),command=lambda:showScreen(1,colour),height=30,width=15).place(x=0,y=0)
     
     # if num is 3 then show thrid screen
@@ -273,7 +330,8 @@ def showScreen(num,colour,userName = None):
         map = TkinterMapView(rightFrame,width=425,height=650)
         map.grid(row= 1,padx=0,pady=0)
         map.set_address('tamil nadu')
-        map.add_right_click_menu_command(label='Add Place',command=addPlace,pass_coords=True)
+        if fetch() == 'farmer':
+            map.add_right_click_menu_command(label='Add Place',command=addPlace,pass_coords=True)
         CTkButton(rightFrame,text='',command=map.delete_all_marker,image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\disable-location-3706160-3087334.png'),size=(18,18)),width=12,height=12,bg_color='white',fg_color='black',hover_color='white').place(x=290,y=45)
         CTkLabel(rightFrame,text='',image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\globalre.png'),size=(26,26))).place(x=164,y=10)
         CTkOptionMenu(rightFrame,values=['Satellite','Normal','Street'],command=mapWidget).place(x=190,y=10)
@@ -292,3 +350,4 @@ main.mainloop()
 
 #nikish
 #daniel354
+#9.672445,78.096734
