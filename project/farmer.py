@@ -20,12 +20,23 @@ menuOption = 0
 def showScreen(num,colour,userName = None):
     global menuOption
     
-    def fetch():
+    def save(event,table,column,value,condition,check):
         myCursor = mydataBase.cursor()
-        myCursor.execute(f'select role from logins where name = "{userName}"')
-        userRole = myCursor.fetchone()[0]
+        try:
+            myCursor.execute(f'update {table} set {column} = "{value}" where {condition} = "{check}"')
+            mydataBase.commit()
+            CTkMessagebox(main,title='Successfully Updated',message="Your entry is successfully updated",icon='check')
+            myCursor.close()
+        except:
+            CTkMessagebox(main,title='Error',icon='cancel',message=f"Error in Updating {column} and it's value {value}")
+    
+    # data fetch
+    def fetch(action):
+        myCursor = mydataBase.cursor()
+        myCursor.execute(f'select {action} from logins where name = "{userName}"')
+        userDetail = myCursor.fetchone()[0]
         myCursor.close() 
-        return userRole
+        return userDetail
         
     # taking details
     def takeFarmerDetails(column,pos):
@@ -58,6 +69,8 @@ def showScreen(num,colour,userName = None):
         
         # setting quantity reduce
         def reduceQuantity(value,price):
+            
+            # it is set to make the quantity not to decrease below 1
             if value > 1:
                 priceLabel.set((value-1)*price)
                 quantity.set(value-1) 
@@ -66,20 +79,25 @@ def showScreen(num,colour,userName = None):
                 quantity.set(value)
             
         quantity = StringVar(value=1)
-        consumerFrame = CTkFrame(main,width = 350,height=210,fg_color='grey23' if colour == 'white' else 'gainsboro')
+        consumerFrame = CTkFrame(main,width = 350,height=230,fg_color='grey23' if colour == 'white' else 'gainsboro')
         consumerFrame.place(x=10,y=10)
         topFrame = CTkFrame(consumerFrame,width=350,height=30,fg_color='grey7' if colour == 'white' else 'white',bg_color='grey7' if colour == 'white' else 'gainsboro')
         topFrame.place(x=0,y=0)
+        CTkLabel(topFrame,text='Order',text_color=colour,fg_color='grey7' if colour == 'white' else 'white',font=("Comic Sans MS", 20, "bold")).place(x=0,y=0)
         price,framerName = takeFarmerDetails('price',pos)
         priceLabel = StringVar(value=price)
-        CTkLabel(consumerFrame,text=f'Name : {framerName}\nPrice : {price}\nLocation : {pos}',text_color=colour).place(x=0,y=50)
+        CTkLabel(consumerFrame,text = f'Name : {framerName}',text_color="red").place(x=0,y=30)
+        CTkLabel(consumerFrame,text = f'Price : {price}',text_color="red").place(x=0,y=50)
+        CTkLabel(consumerFrame,text = f'Location : {pos}',text_color="red").place(x=0,y=70)
         CTkButton(topFrame,width=10,height=30,text='',fg_color='grey7',bg_color='grey7',image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\close-red-icon.webp'),size=(25,25)),command=consumerFrame.destroy).place(x=310,y=0)
-        CTkLabel(consumerFrame,text='Please note that this price is not stable. Make a request and wait for the response.\nThe prices may change/got updated by the farmer.',text_color=colour,font=('Times New Roman', 10, 'bold')).place(x=0,y=120)
-        CTkEntry(consumerFrame,text_color=colour,state=DISABLED,textvariable=quantity,width=40).place(x=10,y=70)
-        CTkEntry(consumerFrame,text_color=colour,state=DISABLED,textvariable=priceLabel,width=60).place(x=100,y=70)
-        CTkButton(consumerFrame,text='Confirm',width=50).place(x=160,y=160)
-        CTkButton(consumerFrame,text='+',width=15,height=10,fg_color='black',command=lambda :addQuantity(quantity.get(),price)).place(x=160,y=125)
-        CTkButton(consumerFrame,text='-',width=18,height=10,fg_color='black',command=lambda :reduceQuantity(int(quantity.get()),price)).place(x=100,y=125)
+        CTkLabel(consumerFrame,text="kgs of your order's price is ").place(x=80,y=100)
+        CTkLabel(consumerFrame,text='Please note that this price is not stable. Make a request and wait for the response.\nThe prices may change/got updated by the farmer.',text_color=colour,font=('Times New Roman', 10, 'bold')).place(x=0,y=145)
+        CTkEntry(consumerFrame,text_color=colour,state=DISABLED,textvariable=quantity,width=40).place(x=10,y=100)
+        CTkEntry(consumerFrame,text_color=colour,state=DISABLED,textvariable=priceLabel,width=60).place(x=235,y=100)
+        CTkButton(consumerFrame,text='+',width=15,height=5,fg_color='black',command=lambda :addQuantity(quantity.get(),price),font=('Times New Roman',6,'bold')).place(x=50,y=100)
+        CTkButton(consumerFrame,text='-',width=15,height=5,fg_color='black',command=lambda :reduceQuantity(int(quantity.get()),price),font=('Times New Roman',6,'bold')).place(x=50,y=113)
+        CTkButton(consumerFrame,text='Confirm').place(x=30,y=185)
+        CTkButton(consumerFrame,text='Cancel',command=consumerFrame.destroy).place(x=190,y=185)
         consumerFrame.bind('<ButtonPress-1>',takeStart)
         consumerFrame.bind("<B1-Motion>",moveable)
              
@@ -88,9 +106,10 @@ def showScreen(num,colour,userName = None):
         
         # make message box movable  
         def moveable1(event):
-            x = popUpFrame.winfo_x()+(event.x-start)
-            y = popUpFrame.winfo_y()+(event.y - start1)
-            popUpFrame.place(x=x,y=y)
+            if start is not None:
+                x = popUpFrame.winfo_x()+(event.x-start)
+                y = popUpFrame.winfo_y()+(event.y - start1)
+                popUpFrame.place(x=x,y=y)
             
         def priceUpdate():
             myCursor = mydataBase.cursor()
@@ -110,21 +129,52 @@ def showScreen(num,colour,userName = None):
         popUpFrame.place(x=10,y=10)
         topFrame = CTkFrame(popUpFrame,width=350,height=30,fg_color='grey7' if colour == 'white' else 'white',bg_color='grey7' if colour == 'white' else 'gainsboro')
         topFrame.place(x=0,y=0)
-        CTkLabel(popUpFrame,text=f'Welcome back {name}\nAdd/Update the price of your {item} you sell').place(x=0,y=50)
+        CTkLabel(topFrame,text='Price Update',text_color=colour,fg_color='grey7' if colour == 'white' else 'white',font=("Comic Sans MS", 20, "bold")).place(x=0,y=0)
+        CTkLabel(popUpFrame,text=f'Welcome back {name}\nAdd/Update the price of your {item} you sell').place(x=40,y=50)
         updatedPrice = CTkEntry(popUpFrame,text_color=colour,textvariable=price)
         updatedPrice.place(x=80,y=85)
-        CTkButton(popUpFrame,text='ok',text_color=colour,command=priceUpdate).place(x=70,y=125)
-        CTkButton(popUpFrame,text='cancel',text_color=colour,command=popUpFrame.destroy).place(x=175,y=125)
+        CTkButton(popUpFrame,text='Ok',text_color=colour,command=priceUpdate).place(x=30,y=125)
+        CTkButton(popUpFrame,text='Cancel',text_color=colour,command=popUpFrame.destroy).place(x=185,y=125)
         popUpFrame.bind('<ButtonPress-1>',takeStart)
         popUpFrame.bind("<B1-Motion>",moveable1)
         
-    # right click menu
+    #add place right click menu 
     def addPlace(coor):
-        myCursor = mydataBase.cursor()
-        item = CTkInputDialog(title='Item',text='Add the item you sell')
-        myCursor.execute('insert into items(item,location,price,farmer) values(%s,%s,%s,%s)',(item.get_input(),','.join([str(coor[0]),str(coor[1])]),'0',userName))
-        mydataBase.commit()
-        myCursor.close()
+        
+        # adds movement of the frame
+        def moveable1(event):
+            if start is not None:
+                x = addPlaceFrame.winfo_x()+(event.x-start)
+                y = addPlaceFrame.winfo_y()+(event.y - start1)
+                addPlaceFrame.place(x=x,y=y)
+        
+        def confirmAdd():
+            if item.get() == '' or price.get() == '':
+                CTkMessagebox(main,title='Error',icon='cancel',message='Please enter the details',text_color=colour)
+            else:
+                myCursor = mydataBase.cursor()
+                myCursor.execute('insert into items(item,location,price,farmer) values(%s,%s,%s,%s)',(item.get(),','.join([str(coor[0]),str(coor[1])]),price.get(),userName))
+                mydataBase.commit()
+                myCursor.close()
+                addPlaceFrame.destroy()
+                CTkMessagebox(main,icon='check',title='Successfully Added',message="Your item and it's price is successfully added")
+
+        addPlaceFrame = CTkFrame(main,width = 350,height=210,fg_color='grey23' if colour == 'white' else 'gainsboro')
+        addPlaceFrame.place(x=10,y=10)
+        topFrame = CTkFrame(addPlaceFrame,width=350,height=30,fg_color='grey7' if colour == 'white' else 'white',bg_color='grey7' if colour == 'white' else 'gainsboro')
+        topFrame.place(x=0,y=0)
+        CTkLabel(topFrame,text='Add Item',text_color=colour,fg_color='grey7' if colour == 'white' else 'white',font=("Comic Sans MS", 20, "bold")).place(x=0,y=0)
+        CTkButton(topFrame,width=10,height=30,text='',fg_color='grey7',bg_color='grey7',image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\close-red-icon.webp'),size=(25,25)),command=addPlaceFrame.destroy).place(x=310,y=0)
+        item = CTkEntry(addPlaceFrame,placeholder_text='Your Item',text_color=colour)
+        item.place(x=150,y=50)
+        CTkLabel(addPlaceFrame,text='Enter the item you sell ').place(x=20,y=50)
+        price = CTkEntry(addPlaceFrame,placeholder_text='Price',text_color=colour)
+        price.place(x=95,y=85)
+        CTkLabel(addPlaceFrame,text="and it's price").place(x=20,y=85)
+        CTkButton(addPlaceFrame,text='Confirm',command=confirmAdd,width=100).place(x=40,y=135)
+        CTkButton(addPlaceFrame,text = 'Cancel',command=addPlaceFrame.destroy,width=100).place(x=180,y=135)
+        addPlaceFrame.bind('<ButtonPress-1>',takeStart)
+        addPlaceFrame.bind('<B1-Motion>',moveable1)
         
     # set theme
     def theme(option):
@@ -153,6 +203,7 @@ def showScreen(num,colour,userName = None):
         userName1.delete(0,END)
         password1.delete(0,END)
         email.delete(0,END)
+        locationEntry.delete(0,END)
     
     # clear entry function 0
     def clear():
@@ -181,13 +232,13 @@ def showScreen(num,colour,userName = None):
     # function for new registration
     def register():
         myCursor = mydataBase.cursor()
-        details = [userName1.get()]+[password1.get()]+[email.get()]+[role.get()]
+        details = [userName1.get()]+[password1.get()]+[email.get()]+[role.get()]+[locationEntry.get()]
         datas = getDatas('Name','Name',details[0])
         emails = getDatas('Email','Email',details[2]) 
         
         # checking for the nullity entry       
-        if len(details[0])==0 or len(details[1])==0 or len(details[2])==0:
-            opinion = CTkMessagebox(main,title='LOGIN ERROR',icon='warning',message='Please check your UserName , Password , Email Id and set the Role!!',option_1='Retry',option_2='Close')
+        if len(details[0])==0 or len(details[1])==0 or len(details[2])==0 or len(details[4])==0:
+            opinion = CTkMessagebox(main,title='LOGIN ERROR',icon='warning',message='Please check your UserName , Password , Email Id and your location!!',option_1='Retry',option_2='Close')
             if opinion.get() == 'Close':
                 clear1()
         elif len(datas)==1:
@@ -195,7 +246,7 @@ def showScreen(num,colour,userName = None):
         elif len(emails)==1:
             CTkMessagebox(main,title='LOGIN ERROR!!',icon='warning',message='This Email already exist.')
         elif len(details[1])>=8:
-            myCursor.execute('insert into logins(Name,Password,Email,role) values(%s,%s,%s,%s)',details)
+            myCursor.execute('insert into logins(Name,Password,Email,role,location) values(%s,%s,%s,%s,%s)',details)
             mydataBase.commit()
             CTkMessagebox(main,title='REGISTERED SUCCESSFULLY',icon='check',message='You are successfully registred your Account')
             myCursor.close()
@@ -205,13 +256,21 @@ def showScreen(num,colour,userName = None):
     
     # search by location and mapping based on the location list
     def marker(status,locationsList = None):
+        
+        # it'll execute when locationsList list is passed
         if locationsList:
             for i in locationsList:
                 i = str(i).replace('(','').replace(')','').replace("'",'')
                 loc = i.split(',')
-                map.set_marker(float(loc[0]),float(loc[1]),text=items.get(),text_color = 'black',marker_color_circle = 'white',command=lambda x : pricePopUp(x.position) if fetch() == 'farmer' else showDetails(x.position))
-        else:
+                map.set_marker(float(loc[0]),float(loc[1]),text=items.get(),text_color = 'black',marker_color_circle = 'white',command=lambda x : pricePopUp(x.position) if fetch('role') == 'farmer' else showDetails(x.position))
+        
+        # it's for search location
+        elif not status:
             map.set_address(location.get(),marker=status)
+            
+        # it's executed when there is no locationsList sorted for the search element
+        else:
+            option = CTkMessagebox(main,title='Insufficient Item',message=f'You have searched for the item-{items.get()} which is not added by our farmers yet .',option_1='Request',option_2='Cancel')
     
     # take locations wrt items
     def takeLocations():
@@ -234,16 +293,42 @@ def showScreen(num,colour,userName = None):
     def setRoleEntry():
         roleEntry.insert(0,role)
         
+    # show location hint
     def showHover(event):
         global noticeLable
         noticeLable = CTkLabel(main,text='Notice: Kindly get your location from your Gmaps and Enter your location .\n If your location is not entered correct not to worry much , you can change your location on menu',text_color=colour,fg_color='black'if colour == 'white' else 'white',font=('Times New Roman', 10))
         noticeLable.place(x=180,y=(270-event.y))
-        
+    
+    # hide location hint    
     def hideHover(event):
         noticeLable.destroy()
         
-    def changeLocation():
-        CTkInputDialog(title='Change Your Location',text='Your past Location is ')
+    # change location    
+    def myLocationClick(loc):
+        
+        def moveableLocFrame(event):
+            if start is not None:
+                x = changeFrame.winfo_x()+(event.x-start)
+                y = changeFrame.winfo_y()+(event.y - start1)
+                changeFrame.place(x=x,y=y)
+                
+        def changeLocation():
+            newLocation.configure(state = NORMAL)
+            newLocation.bind('<Return>',lambda event : save(event,'logins','location',newLocation.get().replace(' ',','),'Name',userName))
+            
+        changeFrame = CTkFrame(main,width = 350,height=230,fg_color='grey23' if colour == 'white' else 'gainsboro')
+        changeFrame.place(x=10,y=10)
+        topFrame = CTkFrame(changeFrame,width=350,height=30,fg_color='grey7' if colour == 'white' else 'white',bg_color='grey7' if colour == 'white' else 'gainsboro')
+        topFrame.place(x=0,y=0)
+        CTkButton(topFrame,width=10,height=30,text='',fg_color='grey7',bg_color='grey7',image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\close-red-icon.webp'),size=(25,25)),command=changeFrame.destroy).place(x=310,y=0)
+        oldLocEntry = StringVar(value=loc)
+        CTkLabel(topFrame,text='Change Location',text_color=colour,fg_color='grey7' if colour == 'white' else 'white',font=("Comic Sans MS", 20, "bold")).place(x=0,y=0)
+        CTkLabel(changeFrame,text=f"Your past Location is {loc} .\nEnter new location",text_color=colour).place(x=10,y=35)
+        newLocation = CTkEntry(changeFrame,placeholder_text='Location',text_color=colour,state=DISABLED,textvariable = oldLocEntry)
+        newLocation.place(x=30,y=80)  
+        CTkButton(changeFrame,text='',width=30,image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\edit.png')),command=changeLocation).place(x=7,y=140)
+        changeFrame.bind('<ButtonPress-1>',takeStart)
+        changeFrame.bind('<B1-Motion>',moveableLocFrame)   
     
     # menu function        
     def menu():
@@ -253,11 +338,14 @@ def showScreen(num,colour,userName = None):
             menuFrame.place(x=390,y=30)
             CTkLabel(menuFrame,text='Theme',text_color=colour,font=('Times New Roman',15)).place(x=2,y=2)
             CTkOptionMenu(menuFrame,values=['Light','Dark'],command=theme,width=30).place(x=50,y=2)
-            CTkButton(menuFrame,text='Change Location',width=80,command=changeLocation).place(x=7,y=40)
             menuOption = 1
         else:
             menuOption = 0
             showScreen(1,colour)
+            
+    def defaultMyLocation():
+        map.delete_all_marker()
+        map.set_marker(float(myLocation[0]),float(myLocation[1]),text='My Home',text_color = 'black',marker_color_circle = 'white',marker_color_outside = 'blue',command = lambda x: myLocationClick(x.position))
          
     # screen switch destroy prev screen    
     for i in main.winfo_children():
@@ -330,9 +418,11 @@ def showScreen(num,colour,userName = None):
         map = TkinterMapView(rightFrame,width=425,height=650)
         map.grid(row= 1,padx=0,pady=0)
         map.set_address('tamil nadu')
-        if fetch() == 'farmer':
+        myLocation = fetch('location').split(',')
+        defaultMyLocation()
+        if fetch('role') == 'farmer':
             map.add_right_click_menu_command(label='Add Place',command=addPlace,pass_coords=True)
-        CTkButton(rightFrame,text='',command=map.delete_all_marker,image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\disable-location-3706160-3087334.png'),size=(18,18)),width=12,height=12,bg_color='white',fg_color='black',hover_color='white').place(x=290,y=45)
+        CTkButton(rightFrame,text='',command=defaultMyLocation,image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\disable-location-3706160-3087334.png'),size=(18,18)),width=12,height=12,bg_color='white',fg_color='black',hover_color='white').place(x=290,y=45)
         CTkLabel(rightFrame,text='',image=CTkImage(Image.open(r'C:\Users\Nikish daniel\Downloads\globalre.png'),size=(26,26))).place(x=164,y=10)
         CTkOptionMenu(rightFrame,values=['Satellite','Normal','Street'],command=mapWidget).place(x=190,y=10)
         CTkButton(leftFrame,text='Back',command=screenClose).place(x=20,y=420)
